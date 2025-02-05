@@ -5,8 +5,8 @@ import argparse
 from datetime import datetime
 
 # 🔹 Okta Configuration
-OKTA_DOMAIN = "https://dev-14159127-admin.okta.com"  # Replace with your Okta domain
-API_TOKEN = os.getenv("OKTA_API_TOKEN")  # API token from environment variable
+OKTA_DOMAIN = "https://dev-14159127-admin.okta.com"
+API_TOKEN = os.getenv("OKTA_API_TOKEN")
 
 if not API_TOKEN:
     print("❌ Error: API token is missing. Please set the OKTA_API_TOKEN environment variable.")
@@ -19,19 +19,18 @@ headers = {
     "Accept": "application/json"
 }
 
-# 🔹 Function: Load JSON File
+# 🔹 Load JSON File
 def load_json(file_path):
     if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
         with open(file_path, 'r') as file:
             return json.load(file)
     return {}
 
-# 🔹 Function: Save Details to `okta_summary.json`
+# 🔹 Save Summary to `okta_summary.json`
 def save_summary(action, entity_type, name, entity_id):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     summary_file = "okta_summary.json"
     
-    # Load existing summary data if available
     summary_data = []
     if os.path.exists(summary_file) and os.path.getsize(summary_file) > 0:
         try:
@@ -40,7 +39,6 @@ def save_summary(action, entity_type, name, entity_id):
         except json.JSONDecodeError:
             summary_data = []
 
-    # Append new entry
     summary_data.append({
         "action": action,
         f"{entity_type}_name": name,
@@ -48,54 +46,111 @@ def save_summary(action, entity_type, name, entity_id):
         "timestamp": timestamp
     })
 
-    # Save back to file
     with open(summary_file, "w") as file:
         json.dump(summary_data, file, indent=4)
 
-    # Print the configuration details
-    print(f"✅ Configuration saved successfully:\n{{\n  \"action\": \"{action}\",\n  \"{entity_type}_name\": \"{name}\",\n  \"{entity_type}_id\": \"{entity_id}\",\n  \"timestamp\": \"{timestamp}\"\n}}")
+    print(f"✅ Configuration saved:\n{json.dumps(summary_data[-1], indent=4)}")
 
-# 🔹 Function: Create a Group Rule
-def create_group_rule(rule_name, attribute, value, group_ids):
+# 🔹 Group Functions
+def create_group(name, description):
+    url = f"{OKTA_DOMAIN}/api/v1/groups"
+    data = {"type": "OKTA_GROUP", "profile": {"name": name, "description": description}}
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code in [200, 201]:
+        group_id = response.json()["id"]
+        save_summary("create", "group", name, group_id)
+    else:
+        print(f"❌ Failed to create group: {response.text}")
+
+def update_group(group_id, new_name, new_description):
+    url = f"{OKTA_DOMAIN}/api/v1/groups/{group_id}"
+    data = {"profile": {"name": new_name, "description": new_description}}
+    response = requests.put(url, headers=headers, json=data)
+    if response.status_code in [200, 201]:
+        save_summary("update", "group", new_name, group_id)
+    else:
+        print(f"❌ Failed to update group: {response.text}")
+
+def delete_group(group_id):
+    url = f"{OKTA_DOMAIN}/api/v1/groups/{group_id}"
+    response = requests.delete(url, headers=headers)
+    if response.status_code == 204:
+        save_summary("delete", "group", group_id, group_id)
+    else:
+        print(f"❌ Failed to delete group: {response.text}")
+
+# 🔹 Group Rule Functions
+def create_group_rule(name, attribute, value, group_ids):
     url = f"{OKTA_DOMAIN}/api/v1/groups/rules"
     data = {
         "type": "group_rule",
-        "name": rule_name,
+        "name": name,
         "status": "ACTIVE",
-        "conditions": {
-            "people": {"users": {"exclude": []}, "groups": {"exclude": []}},
-            "expression": {
-                "value": f"Arrays.contains(user.{attribute}, \"{value}\")",  # Ensure correct property
-                "type": "urn:okta:expression:1.0"
-            }
-        },
+        "conditions": {"expression": {"value": f"Arrays.contains(user.{attribute}, \"{value}\")", "type": "urn:okta:expression:1.0"}},
         "actions": {"assignUserToGroups": {"groupIds": group_ids}}
     }
-    
-    # Print out for debugging purposes
-    print(f"Creating group rule with expression: {data['conditions']['expression']['value']}")
-    
     response = requests.post(url, headers=headers, json=data)
     if response.status_code in [200, 201]:
         rule_id = response.json()["id"]
-        save_summary("create", "group-rule", rule_name, rule_id)
+        save_summary("create", "group-rule", name, rule_id)
     else:
         print(f"❌ Failed to create rule: {response.text}")
 
-# 🔹 Main Function to Process Okta Config Based on Action & Type
+def update_group_rule(rule_id, name, attribute, value, group_ids):
+    url = f"{OKTA_DOMAIN}/api/v1/groups/rules/{rule_id}"
+    data = {
+        "name": name,
+        "status": "ACTIVE",
+        "conditions": {"expression": {"value": f"Arrays.contains(user.{attribute}, \"{value}\")", "type": "urn:okta:expression:1.0"}},
+        "actions": {"assignUserToGroups": {"groupIds": group_ids}}
+    }
+    response = requests.put(url, headers=headers, json=data)
+    if response.status_code in [200, 201]:
+        save_summary("update", "group-rule", name, rule_id)
+    else:
+        print(f"❌ Failed to update rule: {response.text}")
+
+def delete_group_rule(rule_id):
+    url = f"{OKTA_DOMAIN}/api/v1/groups/rules/{rule_id}"
+    response = requests.delete(url, headers=headers)
+    if response.status_code == 204:
+        save_summary("delete", "group-rule", rule_id, rule_id)
+    else:
+        print(f"❌ Failed to delete rule: {response.text}")
+
+# 🔹 Process Okta Configuration
 def process_okta_config(file_path, action, entity_type):
     config = load_json(file_path)
 
-    if action == "create" and entity_type == "group-rule":
-        for rule in config.get("create", {}).get("group_rules", []):
-            create_group_rule(rule["name"], rule["attribute"], rule["value"], rule["groupIds"])
+    if action == "create":
+        if entity_type == "group":
+            for group in config.get("create", {}).get("groups", []):
+                create_group(group["name"], group["description"])
+        elif entity_type == "group-rule":
+            for rule in config.get("create", {}).get("group_rules", []):
+                create_group_rule(rule["name"], rule["attribute"], rule["value"], rule["groupIds"])
+
+    elif action == "update":
+        if entity_type == "group":
+            for group in config.get("update", {}).get("groups", []):
+                update_group(group["group_id"], group["name"], group["description"])
+        elif entity_type == "group-rule":
+            for rule in config.get("update", {}).get("group_rules", []):
+                update_group_rule(rule["rule_id"], rule["name"], rule["attribute"], rule["value"], rule["groupIds"])
+
+    elif action == "delete":
+        if entity_type == "group":
+            for group in config.get("delete", {}).get("groups", []):
+                delete_group(group["group_id"])
+        elif entity_type == "group-rule":
+            for rule in config.get("delete", {}).get("group_rules", []):
+                delete_group_rule(rule["rule_id"])
 
 # 🔹 Run Script
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Manage Okta Group Rules")
-    parser.add_argument("--action", choices=["create", "update", "delete"], required=True, help="Specify action to perform.")
-    parser.add_argument("--type", choices=["group-rule"], required=True, help="Specify type of entity (group-rule).")
-    parser.add_argument("--input-file", default="okta_config.json", help="Input JSON file with Okta configurations.")
-    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--action", choices=["create", "update", "delete"], required=True)
+    parser.add_argument("--type", choices=["group", "group-rule"], required=True)
+    parser.add_argument("--input-file", default="okta_config.json")
     args = parser.parse_args()
     process_okta_config(args.input_file, args.action, args.type)
