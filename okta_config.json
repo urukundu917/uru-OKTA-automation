@@ -1,50 +1,70 @@
 {
-    "create": {
+  "create": {
       "groups": [
-        {
-          "profile": {
-            "name": "string",
-            "description": "string"
+          {
+              "name": "string",
+              "description": "Group for developers"
+          },
+          {
+              "name": "string",
+              "description": "QA Team for testing"
           }
-        }
       ],
       "group_rules": [
-        {
-          "name": "string",
-          "attribute": "ssregion",
-          "value": "string",
-          "groupIds": [""]
-        }
-      ]
-    },
-    "update": {
-      "groups": [
-        {
-          "group_id": "",
-          "profile": {
-            "name": "string",
-            "description": "string"
+          {
+              "name": "Developer Rule",
+              "attribute": "role",
+              "value": "developer",
+              "groupIds": ["abcdef123456"]
+          },
+          {
+              "name": "QA Rule",
+              "attribute": "role",
+              "value": "qa",
+              "groupIds": ["abcdef123456"]
           }
-        }
-      ],
-      "group_rules": [
-        {
-          "rule_id": "",
-          "name": "string"
-        }
       ]
-    },
-    "delete": {
+  },
+  "update": {
       "groups": [
-        {
-          "group_id": ""
-        }
+          {
+              "group_id": "",
+              "name": "string",
+              "description": "Updated group for developers"
+          },
+          {
+              "group_id": "abcdef123456",
+              "name": "string",
+              "description": "Updated QA group"
+          }
       ],
       "group_rules": [
-        {
-          "rule_id": ""
-        }
+          {
+              "rule_id": "abcdef123456",
+              "name": "Updated Developer Rule",
+              "attribute": "role",
+              "value": "senior-developer",
+              "groupIds": ["abcdef123456"]
+          },
+          {
+              "rule_id": "ghijkl789012",
+              "name": "Updated QA Rule",
+              "attribute": "role",
+              "value": "senior-qa",
+              "groupIds": ["abcdef123456"]
+          }
       ]
-    }
+  },
+  "delete": {
+      "groups": [
+          {
+              "group_id": "abcdef1234567"
+          }
+      ],
+      "group_rules": [
+          {
+              "rule_id": "abcdef123456"
+          }
+      ]
   }
-  
+}

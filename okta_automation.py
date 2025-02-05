@@ -63,6 +63,9 @@ def create_group(name, description):
         print(f"❌ Failed to create group: {response.text}")
 
 def update_group(group_id, new_name, new_description):
+    if not group_id:
+        print("⚠️ Skipping update: Missing `group_id`")
+        return
     url = f"{OKTA_DOMAIN}/api/v1/groups/{group_id}"
     data = {"profile": {"name": new_name, "description": new_description}}
     response = requests.put(url, headers=headers, json=data)
@@ -72,6 +75,9 @@ def update_group(group_id, new_name, new_description):
         print(f"❌ Failed to update group: {response.text}")
 
 def delete_group(group_id):
+    if not group_id:
+        print("⚠️ Skipping delete: Missing `group_id`")
+        return
     url = f"{OKTA_DOMAIN}/api/v1/groups/{group_id}"
     response = requests.delete(url, headers=headers)
     if response.status_code == 204:
@@ -97,6 +103,9 @@ def create_group_rule(name, attribute, value, group_ids):
         print(f"❌ Failed to create rule: {response.text}")
 
 def update_group_rule(rule_id, name, attribute, value, group_ids):
+    if not rule_id:
+        print("⚠️ Skipping update: Missing `rule_id`")
+        return
     url = f"{OKTA_DOMAIN}/api/v1/groups/rules/{rule_id}"
     data = {
         "name": name,
@@ -111,6 +120,9 @@ def update_group_rule(rule_id, name, attribute, value, group_ids):
         print(f"❌ Failed to update rule: {response.text}")
 
 def delete_group_rule(rule_id):
+    if not rule_id:
+        print("⚠️ Skipping delete: Missing `rule_id`")
+        return
     url = f"{OKTA_DOMAIN}/api/v1/groups/rules/{rule_id}"
     response = requests.delete(url, headers=headers)
     if response.status_code == 204:
@@ -125,7 +137,15 @@ def process_okta_config(file_path, action, entity_type):
     if action == "create":
         if entity_type == "group":
             for group in config.get("create", {}).get("groups", []):
-                create_group(group["name"], group["description"])
+                name = group.get("name") or group.get("group_name")
+                description = group.get("description") or group.get("group_description")
+
+                if not name or not description:
+                    print(f"⚠️ Skipping invalid group entry: {group}")
+                    continue
+
+                create_group(name, description)
+
         elif entity_type == "group-rule":
             for rule in config.get("create", {}).get("group_rules", []):
                 create_group_rule(rule["name"], rule["attribute"], rule["value"], rule["groupIds"])
@@ -133,18 +153,20 @@ def process_okta_config(file_path, action, entity_type):
     elif action == "update":
         if entity_type == "group":
             for group in config.get("update", {}).get("groups", []):
-                update_group(group["group_id"], group["name"], group["description"])
+                update_group(group.get("group_id"), group.get("name"), group.get("description"))
+
         elif entity_type == "group-rule":
             for rule in config.get("update", {}).get("group_rules", []):
-                update_group_rule(rule["rule_id"], rule["name"], rule["attribute"], rule["value"], rule["groupIds"])
+                update_group_rule(rule.get("rule_id"), rule.get("name"), rule.get("attribute"), rule.get("value"), rule.get("groupIds"))
 
     elif action == "delete":
         if entity_type == "group":
             for group in config.get("delete", {}).get("groups", []):
-                delete_group(group["group_id"])
+                delete_group(group.get("group_id"))
+
         elif entity_type == "group-rule":
             for rule in config.get("delete", {}).get("group_rules", []):
-                delete_group_rule(rule["rule_id"])
+                delete_group_rule(rule.get("rule_id"))
 
 # 🔹 Run Script
 if __name__ == "__main__":
