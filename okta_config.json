@@ -1,0 +1,50 @@
+{
+    "create": {
+      "groups": [
+        {
+          "profile": {
+            "name": "string",
+            "description": "string"
+          }
+        }
+      ],
+      "group_rules": [
+        {
+          "name": "string",
+          "attribute": "ssregion",
+          "value": "string",
+          "groupIds": [""]
+        }
+      ]
+    },
+    "update": {
+      "groups": [
+        {
+          "group_id": "",
+          "profile": {
+            "name": "string",
+            "description": "string"
+          }
+        }
+      ],
+      "group_rules": [
+        {
+          "rule_id": "",
+          "name": "string"
+        }
+      ]
+    },
+    "delete": {
+      "groups": [
+        {
+          "group_id": ""
+        }
+      ],
+      "group_rules": [
+        {
+          "rule_id": ""
+        }
+      ]
+    }
+  }
+  

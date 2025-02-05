@@ -1,0 +1,18 @@
+# Create a Group
+python okta_automation.py --action create --type group --input-file okta_config.json
+
+# Create a Group Rule
+python okta_automation.py --action create --type group-rule --input-file okta_config.json
+
+# Update a Group
+python okta_automation.py --action update --type group --input-file okta_config.json
+
+# Update a Group Rule
+python okta_automation.py --action update --type group-rule --input-file okta_config.json
+
+# Delete a Group
+python okta_automation.py --action delete --type group --input-file okta_config.json
+
+# Delete a Group Rule
+python okta_automation.py --action delete --type group-rule --input-file okta_config.json
+
